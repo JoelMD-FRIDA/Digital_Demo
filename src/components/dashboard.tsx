@@ -26,12 +26,12 @@ import { Brand, LanguageSwitch } from "./brand";
 import { useI18n, categoryNames, formatDate } from "@/lib/i18n";
 import { insurers, insurerById } from "@/lib/catalog";
 import type { Insurer, Workspace, SampleDocument, Category } from "@/lib/types";
-import { browserClient } from "@/lib/supabase/browser";
+import { apiFetch } from "@/lib/api-client";
 import { Modal } from "./modal";
 import { DocumentDetail } from "./document-detail";
 export type View = "inbox" | "connections" | "account";
 async function request(path: string, value?: unknown, method = "POST") {
-  const response = await fetch(
+  const response = await apiFetch(
     path,
     value === undefined
       ? { cache: "no-store" }
@@ -42,13 +42,9 @@ async function request(path: string, value?: unknown, method = "POST") {
         },
   );
   if (response.status === 401) {
-    window.location.assign("/login");
     throw new Error("UNAUTHORIZED");
   }
-  if (response.status === 503) {
-    window.location.assign("/login");
-    throw new Error("NOT_CONFIGURED");
-  }
+  if (response.status === 503) throw new Error("TEMPORARILY_UNAVAILABLE");
   if (!response.ok) throw new Error("REQUEST_FAILED");
   return response.json();
 }
@@ -185,8 +181,8 @@ export function Dashboard({ view }: { view: View }) {
     setBusy(true);
     setError("");
     try {
-      const { error } = await browserClient().auth.signOut();
-      if (error) throw error;
+      const response = await apiFetch('/api/auth/logout',{method:'POST'});
+      if (!response.ok) throw new Error('REQUEST_FAILED');
       window.location.replace("/login");
     } catch {
       setError(t("requestFailed"));
@@ -683,12 +679,6 @@ export function Dashboard({ view }: { view: View }) {
                     </label>
                     <p className="muted">{t("realAccount")}</p>
                     <div className="account-actions">
-                      <Link
-                        href="/forgot-password"
-                        className="button secondary"
-                      >
-                        {t("forgot")}
-                      </Link>
                       <button
                         className="button secondary"
                         disabled={busy}

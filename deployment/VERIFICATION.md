@@ -1,0 +1,43 @@
+# Verification — 14 October 2026
+
+Canonical source: `JoelMD-FRIDA/Digital_Demo` main
+`5a04b7eae5f85cb650e862bd87d2f75bfbb338c8`. Native integration is on the
+separate `codex/digital-documents-infrastructure` review branch. The operator
+confirmed a fresh empty installation. These tests use only disposable identities,
+a loopback TLS OIDC server and a private temporary PostgreSQL 18.6 cluster.
+
+| Check | Result |
+| --- | --- |
+| Node 24.21.0 / npm 11.19.0 dependency installation | Passed |
+| Production dependency audits, app and tools | Zero reported vulnerabilities |
+| TypeScript / ESLint | Passed, zero lint warnings |
+| Unit tests | 12 passed: API vocabulary/pagination/PDF, body bounds and redirect/cookie rejection |
+| Native PostgreSQL/OIDC integration tests | 15 passed |
+| Next 16.4.1 production compilation | Passed |
+| Temporary standalone server | Liveness 200, unconfigured readiness 503, private API/probe 401, PDF worker 200; process stopped |
+| App/tools image builds and readonly container checks | Prepared in GitHub Actions; pending actual run |
+| Real Authelia / cross-app SSO / browser journey | Pending server integration |
+| Runtime rootless controls / network / disk / load acceptance | Pending for this app |
+| Encrypted off-server backup and restore | Deferred by operator |
+| Public activation / automatic delivery | Disabled |
+
+Native tests prove distinct issuer+subject accounts, empty inboxes, signature /
+issuer / audience / expiry / nonce / entitlement rejection, one-time callbacks,
+refusal of email-only linking, direct-handler cookie-plus-bearer/Origin/CSRF checks,
+consent serialization, all 18 documents / 21 files, idempotent imports, SQL/API
+owner isolation and restricted metadata writes. They also exercise read state,
+retained downloads after disconnect, both policy attachments in both languages,
+role separation, checksum migration replay/drift, refusal of populated init,
+dependency-aware readiness, backup write barriers, complete RLS-row backup,
+empty different-target restore and session invalidation, corrupt-bundle rejection,
+owner-only reset, immediate local disable/expiry and narrow deployment probes.
+
+The source-map-js lock entry was updated to its patched 1.2.2 release during
+dependency preparation; see [upstream release](https://github.com/7rulnik/source-map-js/releases/tag/v1.2.2).
+Production audits were rerun afterward. Earlier Supabase browser results in
+`docs/VERIFICATION.md` are historical; they do not prove the new login journey.
+SQL under `supabase/` was preserved as reference and is never run by the adapter.
+
+No live account, real document, existing database, paid API or source workstation
+secrets were used. Source contract acceptance flags remain false because local
+fixtures do not establish server acceptance, actual images or complete shared SSO.

@@ -1,18 +1,5 @@
-import {
-  identity,
-  sameOrigin,
-  json,
-  failure,
-  databaseError,
-} from "@/server/http";
-export async function POST(request: Request) {
-  try {
-    sameOrigin(request);
-    const { db } = await identity(request);
-    const { error } = await db.rpc("dd_reset");
-    databaseError(error);
-    return json({ ok: true });
-  } catch (error) {
-    return failure(error);
-  }
+import { identity,json,failure } from '@/server/http';
+import { reset } from '@/server/documents';
+export async function POST(request:Request) {
+  try{const {user}=await identity(request);await reset(user.id);return json({ok:true});}catch(error){return failure(error);}
 }

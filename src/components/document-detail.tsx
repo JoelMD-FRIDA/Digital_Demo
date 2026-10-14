@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { Download, FileText, ExternalLink, Loader2 } from "lucide-react";
 import { useI18n, formatDate, categoryNames, lineNames } from "@/lib/i18n";
@@ -25,7 +26,7 @@ export function DocumentDetail({
   useEffect(() => {
     const controller = new AbortController();
     let objectUrl = "";
-    fetch(`/api/files/${file.uuid}?preview=1&locale=${locale}`, {
+    apiFetch(`/api/files/${file.uuid}?preview=1&locale=${locale}`, {
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -47,7 +48,7 @@ export function DocumentDetail({
   async function download() {
     setDownloading(true);
     try {
-      const response = await fetch(`/api/files/${file.uuid}?locale=${locale}`);
+      const response = await apiFetch(`/api/files/${file.uuid}?locale=${locale}`);
       if (!response.ok) throw new Error();
       const blobUrl = URL.createObjectURL(await response.blob());
       const anchor = window.document.createElement("a");

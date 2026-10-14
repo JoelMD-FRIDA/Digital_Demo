@@ -135,7 +135,7 @@ const copy = {
     legalNote: "Demonstration des FRIDA Document API Standards.",
     privacy: "Datenschutzhinweis",
     privacyText:
-      "Für Ihr Konto werden E-Mail-Adresse, Anmeldedaten und Sandbox-Fortschritt im konfigurierten Supabase-Projekt verarbeitet. Alle Versicherungsinhalte sind fiktiv. Laden Sie keine persönlichen Versicherungsdaten hoch.",
+      "Für Ihr Konto werden E-Mail-Adresse und Sandbox-Fortschritt auf dem FRIDA-Server verarbeitet. Die Anmeldung erfolgt über das zentrale FRIDA-Konto. Alle Versicherungsinhalte sind fiktiv. Laden Sie keine persönlichen Versicherungsdaten hoch.",
     newest: "Neueste zuerst",
     helpTitle: "So funktioniert Ihr Postfach",
     helpText:
@@ -268,7 +268,7 @@ const copy = {
     legalNote: "A demonstration of the FRIDA Document API standard.",
     privacy: "Privacy notice",
     privacyText:
-      "Your email address, authentication data and sandbox progress are processed in the configured Supabase project. All insurance content is fictional. Do not upload personal insurance data.",
+      "Your email address and sandbox progress are processed on the FRIDA server. Sign-in uses your central FRIDA account. All insurance content is fictional. Do not upload personal insurance data.",
     newest: "Newest first",
     helpTitle: "How your inbox works",
     helpText:
