@@ -1,0 +1,23 @@
+node_modules/
+.next/
+.env*
+!.env.example
+*.tsbuildinfo
+test-results/
+playwright-report/
+.DS_Store
+._*
+public/pdf.worker.min.mjs
+supabase/.temp/
+supabase/.branches/
+
+# Local hosting metadata, logs, credentials, and private operations notes.
+.vercel/
+*.log
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+.pypirc
+SERVER-INTEGRATION-HANDOFF.md

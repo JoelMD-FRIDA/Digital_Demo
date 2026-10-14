@@ -1,0 +1,244 @@
+openapi: 3.0.3
+info:
+  title: Document API
+  version: "1.0.0"
+  description: |
+    Das ist der zentrale Einstiegspunkt in die Document API. Hier findet der Zugriff auf die verfügbaren Dokumente statt.
+servers:
+  - url: https://api.example.com
+tags:
+  - name: Documents
+  - name: Insurance
+  - name: Files
+paths:
+  /documents:
+    get:
+      tags: [Documents]
+      summary: Dokumente suchen
+      description: |
+        Sucht Dokumente aus dem Speicher des Anbieters und gibt sie als sortierte Liste zurück. Über die beiden optionalen Zeitstempel fromTimestamp und toTimestamp wird der Filterbreich bestimmt, innerhalb dessen sich die zurückgegebenen Nachrichten befinden sollen. Falls der Anbieter entscheidet, dass innerhalt des Filterbereiches zu viele Nachrichten liegen, um sie auf einmal zurückzugeben, kann auch nur ein Teil der Nachrichten geliefert werden. Diese sind jedoch stets sortiert, sodass in nachfolgenden Anfragen die Zeitstempel abhängig von der Sortierung so modifiziert werden können, dass die nächsten Nachrichten abgeholt werden können. Über die eindeutigen IDs der Dokumente können dabei auch Duplikate identifiziert werden. Daher können über die Nutzung der Zeitfenster stets die gesamten verfügbaren Dokumenten ermittelt werden, gegebenenfalls nicht in einem, sondern mehreren Anfragen.
+      parameters:
+        - in: query
+          name: fromTimestamp
+          schema:
+            type: string
+            format: date-time
+          description: >
+            Frühestes Datum, dass zurückgeliefert werden soll als Resultat auf die Anfrage. Falls dieser Parameter leer ist, dann wird der frühestmögliche Zeitpunkt angenommen, also die älteste Nachricht liegt im Filterbereich.
+        - in: query
+          name: toTimestamp
+          schema:
+            type: string
+            format: date-time
+          description: >
+            Spätestes Datum einer Nachricht oder leer, falls die neueste Nachricht innerhalb des Filterbereichs liegen soll.
+        - in: query
+          name: sortAsc
+          schema:
+            type: boolean
+          required: true
+          description: >
+            Boolean, der angibt, ob die Nachrichten aufsteigen (true) oder absteigend (false) sortiert werden sollen.
+      security:
+        - access_token: []
+      responses:
+        "200":
+          description: Gibt eine sortierte Liste mit Dokumente zurück, die innerhalb des angegebenen Zeitfensters liegen.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentList"
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+  /insurance-infos:
+    get:
+      tags: [Insurance]
+      summary: Versicherer-Infos abrufen
+      description: Ermittelt die Informationen zu den Marken unterhalb des Providers.
+      security:
+        - access_token: []
+      responses:
+        "200":
+          description: Liste der Versicherer-Infos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InsuranceInfo"
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+  /files/{uuid}:
+    get:
+      tags: [Files]
+      summary: Datei herunterladen
+      description: Liefert die Binärdaten, die unter einer bestimmten ID abgespeichert sind.
+      parameters:
+        - in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Globale UUID der Datei.
+      security:
+        - access_token: []
+      responses:
+        "200":
+          description: Binärdaten der Datei.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: '#/components/responses/UnauthorizedError'
+components:
+  securitySchemes:
+    access_token:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "access_token in JWT fromat using the Bearer scheme."
+  responses:
+    UnauthorizedError:
+      description: Access token is missing or invalid
+  schemas:
+    Link:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name des Links, z.B. "Service-Bereich" oder "Kontakt".
+        url:
+          type: string
+          format: uri
+          description: URL die vom Benutzer aufgerufen werden kann.
+      required: [name, url]
+    InsuranceInfo:
+      type: object
+      description: Kurzinformation zu einem Versicherer zur Anzeige für den Benutzer.
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Eindeutige UUID für diesen Versicherer, technischer Schlüssel.
+        name:
+          type: string
+          description: Benutzerfreundlicher Name für den Versicherer.
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+          description: Liste von Links, über die sich ein Benutzer Informationen über den Versicherer holen kann.
+      required: [uuid, name, links]
+    File:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Global eindeutige ID der Datei (UUID). Mit Hilfe dieser UUID können nachher die Binärdaten aus der Schnittstelle geladen werden.
+        createdAt:
+          type: string
+          format: date-time
+          description: Zeitpunkt, an dem die Datei im System erstellt wurde.
+        fileName:
+          type: string
+          description: Vollständiger Dateiname einschließlich Endung.
+        mimeType:
+          type: string
+          description: MIME-Typ der Datei
+        description:
+          type: string
+          description: Beschreibung der Datei.
+      required: [uuid, fileName, mimeType]
+    Document:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: UUID des Dokuments, muss global eindeutig sein und genau dieses Dokument repräsentieren.
+        publishedAt:
+          type: string
+          format: date-time
+          description: Datum der Bereitstellung des Dokuments über die Schnittstelle.
+        availableUntil:
+          type: string
+          format: date-time
+          description: Datum, bis zu dem dieses Dokument in der Schnittstelle abrufbar bleibt.
+        contractNumber:
+          type: string
+          description: Vertragsnummer des Dokuments.
+        documentCategory:
+          $ref: "#/components/schemas/DocumentCategory"
+        businessLine:
+          $ref: "#/components/schemas/BusinessLine"
+        source:
+          $ref: "#/components/schemas/SourceType"
+        benefitClaimsId:
+          type: string
+          description: Zugehörige Leistungsnummer
+        billingNumber:
+          type: string
+          description: Zugehörige Abrechnungsnummer
+        title:
+          type: string
+          description: Titel für dieses Dokument.
+        description:
+          type: string
+          description: Kurze Beschreibung des Dokuments.
+        insuranceCompanyUuid:
+          type: string
+          format: uuid
+          description: UUID der VersichererInfo. Diese UUID muss zu einem InsuranceInfo Objekt gehören.
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/File"
+          description: Dateien, die zu diesem Dokument gehören. Normalerweise ist dies eine Datei, es können aber mehrere sein.
+      required: [uuid, publishedAt, insuranceCompanyUuid, files]
+    DocumentList:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Document"
+          description: Die geordnete Liste an Dokumenten, die durch diese Liste repräsentiert wird.
+        resultLimitExceeded:
+          type: boolean
+          description: >
+            Indikator, der angibt, ob die Liste der Dokumente beschränkt wurde und eigentlich noch weitere Dokumente enthält (True).
+        listId:
+          type: string
+          description: >
+            Ein technischer Schlüssel (UUID) zur Identifizierung dieser Ergebnisliste, der zur Fehlerdiagnose und für Rückfragen verwendet werden kann.
+      required: [documents, resultLimitExceeded]
+    SourceType:
+      type: string
+      description: Herkunft des Dokuments.
+      enum:
+        - customer # Indikator, dass Dokument vom Kunden kommt
+        - insuranceCompany # Indikator, dass Dokument vom Versicherer kommt
+    BusinessLine:
+      type: string
+      description: Sparte des Dokuments.
+      enum:
+        - lifeInsurance # Sparte Leben/Rentenversicherung
+        - damage # Sparte Schaden
+        - casuality # Sparte Unfall
+        - liability # Sparte Haftung
+        - motorVehicleInsurance # Sparte Kraftfahrt
+        - health # Sparte Kranken
+        - legal # Sparte Rechtschutz
+    DocumentCategory:
+      type: string
+      description: Kategorie des Dokuments.
+      enum:
+        - application # Antrag
+        - policy # Vertrag
+        - billing # Abrechnung
+        - service # Service
+        - benefitClaim # Leistung
