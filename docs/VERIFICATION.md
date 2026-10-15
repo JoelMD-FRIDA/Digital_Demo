@@ -1,3 +1,5 @@
+> Historical Supabase verification only. Current native PostgreSQL/OIDC evidence is in [deployment/VERIFICATION.md](../deployment/VERIFICATION.md).
+
 # Verification — 10 September 2026
 
 Implemented and verified against a dedicated local Supabase instance, with real Auth, Postgres, RLS, and Mailpit. No hosted Supabase project or Vercel deployment was created.

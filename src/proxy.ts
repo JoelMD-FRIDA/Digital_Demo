@@ -1,32 +1,25 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-import { authConfigured } from "@/lib/supabase/config";
-export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
-  if (!authConfigured() || request.headers.has("authorization"))
-    return response;
-  const client = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (values) => {
-          values.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          values.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
-  await client.auth.getUser();
-  response.headers.set("Cache-Control", "private, no-store");
-  return response;
+import { NextResponse,type NextRequest } from 'next/server';
+import { identity,HttpError } from '@/server/http';
+import { hasRenewalContext } from '@/lib/auth/oidc';
+import { appOrigin, RENEWAL_COOKIE } from '@/lib/auth/session';
+const PUBLIC=new Set(['/auth/renew/complete','/login','/api/auth/login','/auth/callback','/api/health/live','/api/health/ready','/api/internal/deployment-probe','/frida-icon.png','/frida-logo.svg','/favicon.ico','/pdf.worker.min.mjs']);
+const RESUMABLE_SHELLS=new Set(['/','/connections','/account']);
+const RETIRED=new Set(['/register','/forgot-password','/reset-password']);
+export async function proxy(request:NextRequest) {
+  const path=request.nextUrl.pathname;
+  if(RETIRED.has(path))return NextResponse.redirect(new URL('/login',appOrigin()));
+  if(PUBLIC.has(path))return NextResponse.next();
+  try {
+    await identity(request);
+    const response=NextResponse.next();response.headers.set('Cache-Control','private, no-store');return response;
+  }catch(error) {
+    if(error instanceof HttpError&&error.status===401&&!path.startsWith('/api/')) {
+      if(RESUMABLE_SHELLS.has(path)&&hasRenewalContext(request.cookies.get(RENEWAL_COOKIE)?.value)) {
+        const response=NextResponse.next();response.headers.set('Cache-Control','private, no-store');return response;
+      }
+      const url=new URL('/api/auth/login',appOrigin());url.searchParams.set('redirect',path+request.nextUrl.search);return NextResponse.redirect(url);
+    }
+    return NextResponse.json({error:error instanceof HttpError?error.code:'TEMPORARILY_UNAVAILABLE'},{status:error instanceof HttpError?error.status:503,headers:{'Cache-Control':'private, no-store'}});
+  }
 }
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg)$).*)",
-  ],
-};
+export const config={matcher:['/((?!_next/static|_next/image).*)']};

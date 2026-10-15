@@ -2123,3 +2123,6 @@ select,
   background: var(--primary);
   color: white;
 }
+
+.session-notice { position:fixed; bottom:1rem; left:50%; transform:translateX(-50%); z-index:10000; display:flex; align-items:center; gap:1rem; max-width:calc(100vw - 2rem); padding:1rem 1.25rem; border:1px solid #ccd5dd; border-radius:12px; background:#fff; color:#183249; box-shadow:0 4px 24px #18324926; }
+.session-notice button { white-space:nowrap; padding:.5rem .75rem; border-radius:8px; background:#183249; color:#fff; cursor:pointer; }

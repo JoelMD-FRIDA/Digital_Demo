@@ -9,20 +9,21 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:integration": "RUN_LOCAL_INTEGRATION=1 vitest run tests/integration.test.ts",
+    "test:integration": "python3 scripts/test-postgres.py",
     "predev": "node scripts/copy-pdf-worker.mjs",
-    "prebuild": "node scripts/copy-pdf-worker.mjs"
+    "prebuild": "node scripts/copy-pdf-worker.mjs",
+    "check:deployment": "node scripts/check-deployment.mjs",
+    "test:browser-session": "node scripts/test-session-browser.mjs"
   },
   "dependencies": {
-    "@supabase/ssr": "0.12.4",
-    "@supabase/supabase-js": "2.112.3",
     "lucide-react": "1.16.0",
-    "next": "16.2.6",
+    "next": "16.4.1",
     "pdf-lib": "1.17.1",
-    "pdfjs-dist": "^6.3.289",
+    "pdfjs-dist": "6.3.289",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "openid-client": "6.8.8",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -31,11 +32,16 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.4.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.7",
-    "yaml": "^2.8.0"
+    "yaml": "^2.8.0",
+    "@types/pg": "8.23.1"
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "packageManager": "npm@11.19.0"
 }

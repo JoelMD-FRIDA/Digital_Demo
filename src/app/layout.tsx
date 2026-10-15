@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { I18nProvider } from "@/lib/i18n";
 import "./globals.css";
+import { SessionContinuity } from "@/components/session-continuity";
 export const metadata: Metadata = {
   title: "FRIDA Digital Documents",
   description:
@@ -17,7 +18,7 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body>
-        <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+        <I18nProvider initialLocale={locale}><SessionContinuity />{children}</I18nProvider>
       </body>
     </html>
   );

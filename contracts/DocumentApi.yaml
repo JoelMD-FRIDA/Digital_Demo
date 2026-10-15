@@ -5,7 +5,7 @@ info:
   description: |
     Das ist der zentrale Einstiegspunkt in die Document API. Hier findet der Zugriff auf die verfügbaren Dokumente statt.
 servers:
-  - url: https://api.example.com
+  - url: https://documents.sandbox.freeinsurancedata.de/api
 tags:
   - name: Documents
   - name: Insurance
@@ -96,13 +96,13 @@ paths:
 components:
   securitySchemes:
     access_token:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: "access_token in JWT fromat using the Bearer scheme."
+      type: apiKey
+      in: cookie
+      name: __Host-frida-digital-documents
+      description: Opaque host-only application session established through central OIDC login.
   responses:
     UnauthorizedError:
-      description: Access token is missing or invalid
+      description: Application session is missing or expired
   schemas:
     Link:
       type: object
