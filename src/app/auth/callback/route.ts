@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { finishLogin } from '@/lib/auth/oidc';
-import { SESSION_COOKIE, CSRF_COOKIE, TRANSACTION_COOKIE, SESSION_SECONDS, cookieOptions, appOrigin, RENEWAL_COOKIE, RENEWAL_SECONDS } from '@/lib/auth/session';
+import { SESSION_COOKIE, CSRF_COOKIE, TRANSACTION_COOKIE, SESSION_SECONDS, cookieOptions, appOrigin, RENEWAL_COOKIE, RENEWAL_COOKIE_SECONDS } from '@/lib/auth/session';
 export async function GET(request: NextRequest) {
   try {
     if (request.headers.get('host')!==new URL(appOrigin()).host) throw new Error('Origin mismatch.');
     const login = await finishLogin(request.nextUrl,request.cookies.get(TRANSACTION_COOKIE)?.value);
     const response = NextResponse.redirect(new URL(login.returnPath,appOrigin()));
     response.headers.set('Cache-Control','no-store');
-    if(login.renewalCookie)response.cookies.set(RENEWAL_COOKIE,login.renewalCookie,{...cookieOptions,maxAge:RENEWAL_SECONDS});
+    if(login.renewalCookie)response.cookies.set(RENEWAL_COOKIE,login.renewalCookie,{...cookieOptions,maxAge:RENEWAL_COOKIE_SECONDS});
     response.cookies.set(TRANSACTION_COOKIE,'',{ ...cookieOptions,maxAge:0 });
     response.cookies.set(SESSION_COOKIE,login.session,{ ...cookieOptions,maxAge:SESSION_SECONDS });
     response.cookies.set(CSRF_COOKIE,login.csrf,{ ...cookieOptions,httpOnly:false,sameSite:'strict',maxAge:SESSION_SECONDS });

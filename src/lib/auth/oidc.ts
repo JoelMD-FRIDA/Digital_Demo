@@ -64,17 +64,23 @@ export function acceptedClaims(claims: Record<string, unknown>) {
     expires: new Date(Math.min(Date.now()+SESSION_SECONDS*1000,claims.exp*1000)) };
 }
 interface RenewalBinding { issuer:string; subject:string; profileId:string; expires:number; }
-function renewalBinding(value:string|undefined):RenewalBinding {
+function renewalBinding(value:string|undefined,interactive=false):RenewalBinding {
   if (!value || value.length>4096) throw new Error('Sign in again to renew your session.');
   const binding=JSON.parse(decrypt(value)) as RenewalBinding;
   if (binding.issuer!==oidcSettings().issuer || typeof binding.subject!=='string' || !binding.subject ||
       typeof binding.profileId!=='string' || !/^[a-f0-9-]{36}$/.test(binding.profileId) ||
-      !Number.isSafeInteger(binding.expires) || binding.expires<=Date.now() || binding.expires>Date.now()+RENEWAL_SECONDS*1000)
+      !Number.isSafeInteger(binding.expires) || binding.expires<=Date.now()-(interactive?24*3600*1000:0) || binding.expires>Date.now()+RENEWAL_SECONDS*1000)
     throw new Error('Session renewal binding expired.');
   return binding;
 }
+// Only the three public client-rendered shells may resume from this context.
+// API identity still requires a fresh, enabled 60-second app session.
+export function hasRenewalContext(value:string|undefined) {
+  try {renewalBinding(value,true);return true;}catch{return false;}
+}
 export async function startLogin(returnPath: string | null, renewal?:{cookie:string|undefined; interactive?:boolean}) {
-  const binding=renewal ? renewalBinding(renewal.cookie) : undefined;
+  const binding=renewal ? renewalBinding(renewal.cookie,renewal.interactive) : undefined;
+  if(binding && renewal?.interactive)binding.expires=Date.now()+RENEWAL_SECONDS*1000;
   const config = await oidcConfiguration();
   const state = oidc.randomState(), nonce = oidc.randomNonce(), verifier = oidc.randomPKCECodeVerifier();
   const transaction = opaque();
@@ -83,10 +89,10 @@ export async function startLogin(returnPath: string | null, renewal?:{cookie:str
     const count = await db.query('SELECT count(*)::int AS total FROM oidc_transactions');
     if (count.rows[0].total >= 1000) throw new Error('Login is temporarily unavailable.');
     await db.query('INSERT INTO oidc_transactions(id_hash,state_hash,encrypted,return_path,expires_at) VALUES($1,$2,$3,$4,now()+interval \'5 minutes\')',
-      [hash(transaction),hash(state),encrypt(JSON.stringify({ nonce,verifier,binding })),binding ? '/auth/renew/complete'+(renewal?.interactive?'?popup=1':'') : safeReturnPath(returnPath)]);
+      [hash(transaction),hash(state),encrypt(JSON.stringify({ nonce,verifier,binding,interactive:renewal?.interactive===true })),binding ? '/auth/renew/complete'+(renewal?.interactive?'?popup=1':'') : safeReturnPath(returnPath)]);
   });
   const url = oidc.buildAuthorizationUrl(config,{ redirect_uri: appOrigin()+'/auth/callback',
-    scope: 'openid profile email groups', state, nonce, ...(renewal && !renewal.interactive ? {prompt:'none'} : {}),
+    scope: 'openid profile email groups', state, nonce, ...(renewal ? {prompt:renewal.interactive?'login':'none'} : {}),
     code_challenge: await oidc.calculatePKCECodeChallenge(verifier), code_challenge_method: 'S256' });
   return { transaction, url };
 }
@@ -100,7 +106,7 @@ export async function finishLogin(url: URL, transaction: string | undefined) {
     if (result.rows.length !== 1) throw new Error('Expired or replayed login transaction.');
     return result.rows[0];
   });
-  const { nonce, verifier, binding } = JSON.parse(decrypt(entry.encrypted)) as {nonce:string;verifier:string;binding?:RenewalBinding};
+  const { nonce, verifier, binding, interactive } = JSON.parse(decrypt(entry.encrypted)) as {nonce:string;verifier:string;binding?:RenewalBinding;interactive?:boolean};
   const callback = new URL(appOrigin()+'/auth/callback');
   callback.search = url.search;
   const tokens = await oidc.authorizationCodeGrant(await oidcConfiguration(),callback,
@@ -121,7 +127,7 @@ export async function finishLogin(url: URL, transaction: string | undefined) {
       await db.query('INSERT INTO oidc_identities(issuer,subject,profile_id) VALUES($1,$2,$3)',[identity.issuer,identity.subject,profile.id]);
     }
     if (!profile.enabled || binding && profile.id!==binding.profileId) throw new Error('This account is disabled or differs from the original session.');
-    if (!binding) renewalCookie=encrypt(JSON.stringify({issuer:identity.issuer,subject:identity.subject,profileId:profile.id,expires:Date.now()+RENEWAL_SECONDS*1000}));
+    if (!binding || interactive) renewalCookie=encrypt(JSON.stringify({issuer:identity.issuer,subject:identity.subject,profileId:profile.id,expires:Date.now()+RENEWAL_SECONDS*1000}));
     await db.query('DELETE FROM app_sessions WHERE expires_at<=now()');
     await db.query('INSERT INTO app_sessions(id_hash,profile_id,csrf_hash,expires_at) VALUES($1,$2,$3,$4)', [hash(session),profile.id,hash(csrf),identity.expires]);
   });

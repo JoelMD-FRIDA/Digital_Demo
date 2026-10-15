@@ -58,7 +58,7 @@ no OAuth tokens are stored. Background renewal never extends the one-hour
 binding. Removed entitlement, changed SSO identity, tampered/expired binding and
 callback replay are rejected. No database migration is needed.
 
-12 unit tests, 17 disposable PostgreSQL/TLS OIDC integration tests, typecheck
+12 unit tests, 18 disposable PostgreSQL/TLS OIDC integration tests, typecheck
 and lint passed. A real Chromium fixture rendered the production Dashboard,
 consent modal, API client and renewal components. It verified expiry during
 consent, preserved checked consent after denial, rejected forged completion,
@@ -71,3 +71,11 @@ Digital's first-party confidential Authelia client must use implicit identity
 consent so background authentication does not require a new IdP consent screen.
 This does not change sandbox entitlement policy, PKCE, signed claims, or the
 insurer consent recorded by the application. Cyber's client stays unchanged.
+
+Expired sessions also resume only the three explicit client-rendered page shells
+(`/`, `/connections`, `/account`), so navigation after tab suspension stays in
+the app. Private APIs remain denied until renewal succeeds. The encrypted
+identity-context cookie remains for up to one day solely to bind an explicit
+popup sign-in to the original person after the one-hour renewal window expires;
+background renewal cannot extend that window. Explicit recovery requests fresh
+login and issues a new binding only after validated same-person OIDC completion.

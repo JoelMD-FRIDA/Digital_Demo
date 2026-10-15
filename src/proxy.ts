@@ -1,7 +1,9 @@
 import { NextResponse,type NextRequest } from 'next/server';
 import { identity,HttpError } from '@/server/http';
-import { appOrigin } from '@/lib/auth/session';
+import { hasRenewalContext } from '@/lib/auth/oidc';
+import { appOrigin, RENEWAL_COOKIE } from '@/lib/auth/session';
 const PUBLIC=new Set(['/auth/renew/complete','/login','/api/auth/login','/auth/callback','/api/health/live','/api/health/ready','/api/internal/deployment-probe','/frida-icon.png','/frida-logo.svg','/favicon.ico','/pdf.worker.min.mjs']);
+const RESUMABLE_SHELLS=new Set(['/','/connections','/account']);
 const RETIRED=new Set(['/register','/forgot-password','/reset-password']);
 export async function proxy(request:NextRequest) {
   const path=request.nextUrl.pathname;
@@ -12,6 +14,9 @@ export async function proxy(request:NextRequest) {
     const response=NextResponse.next();response.headers.set('Cache-Control','private, no-store');return response;
   }catch(error) {
     if(error instanceof HttpError&&error.status===401&&!path.startsWith('/api/')) {
+      if(RESUMABLE_SHELLS.has(path)&&hasRenewalContext(request.cookies.get(RENEWAL_COOKIE)?.value)) {
+        const response=NextResponse.next();response.headers.set('Cache-Control','private, no-store');return response;
+      }
       const url=new URL('/api/auth/login',appOrigin());url.searchParams.set('redirect',path+request.nextUrl.search);return NextResponse.redirect(url);
     }
     return NextResponse.json({error:error instanceof HttpError?error.code:'TEMPORARILY_UNAVAILABLE'},{status:error instanceof HttpError?error.status:503,headers:{'Cache-Control':'private, no-store'}});

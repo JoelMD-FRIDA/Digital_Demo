@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { Client } from 'pg';
 import { NextRequest } from 'next/server';
 import { startLogin,finishLogin } from '@/lib/auth/oidc';
-import { SESSION_COOKIE,CSRF_COOKIE,sessionForCookie,decrypt,encrypt } from '@/lib/auth/session';
+import { SESSION_COOKIE,CSRF_COOKIE,sessionForCookie,decrypt,encrypt,RENEWAL_COOKIE } from '@/lib/auth/session';
 import { database } from '@/lib/db/postgres';
 import { proxy } from '@/proxy';
 import { asUser,workspace,connect,reset } from '@/server/documents';
@@ -118,7 +118,20 @@ describe('native PostgreSQL, OIDC and protected document API',()=>{
   await expect(startLogin(null,{cookie:'tampered'})).rejects.toThrow();
   await expect(startLogin(null,{cookie:undefined})).rejects.toThrow();
   const manual=await startLogin(null,{cookie:sessionA.renewalCookie,interactive:true});
-  expect(manual.url.searchParams.has('prompt')).toBe(false);
+  expect(manual.url.searchParams.get('prompt')).toBe('login');
+ });
+ it('resumes only the public page shells after expiry, while private API access stays denied',async()=>{
+  const cookie=RENEWAL_COOKIE+'='+sessionA.renewalCookie;
+  for(const path of ['/','/connections','/account']) {
+   const response=await proxy(new NextRequest('https://documents.frida.test'+path,{headers:{cookie}}));
+   expect(response.headers.get('x-middleware-next')).toBe('1');expect(response.headers.get('location')).toBe(null);
+  }
+  const denied=await proxy(new NextRequest('https://documents.frida.test/api/workspace',{headers:{cookie}}));
+  expect(denied.status).toBe(401);
+  const binding=JSON.parse(decrypt(sessionA.renewalCookie!));binding.expires=Date.now()-1000;
+  const manual=await startLogin(null,{cookie:encrypt(JSON.stringify(binding)),interactive:true});
+  expect(manual.url.searchParams.get('prompt')).toBe('login');
+  await expect(startLogin(null,{cookie:encrypt(JSON.stringify(binding))})).rejects.toThrow();
  });
  it('consumes callbacks once and refuses email-only identity linking',async()=>{
   const flow=await login('collision','a@example.test');await expect(flow.result).rejects.toThrow();
