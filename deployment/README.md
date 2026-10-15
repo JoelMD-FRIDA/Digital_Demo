@@ -100,3 +100,14 @@ this app's entitlement can remain valid at most 60 seconds. Local `profiles.enab
 is checked immediately; changes require owner access. Claims do not create staff
 roles or administrator privileges. Old registration/password/recovery routes
 redirect to central login and their underlying Supabase services are absent.
+
+## Temporary private acceptance images
+
+Same-repository checks for the fixed infrastructure review branch also export
+app/tools and the pinned PostgreSQL image into a two-day Actions artifact. The
+checkout and manifest bind the exact reviewed head commit and workflow run. No
+server credentials, environment files or database data enter the build/artifact.
+These are explicitly marked private-acceptance-only and cannot satisfy the
+main-release provenance or automatic-deployment contract. The operator must
+verify the canonical GitHub artifact digest, run and image contents before any
+offline loading; production acceptance flags remain false.

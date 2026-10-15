@@ -21,3 +21,5 @@ supabase/.branches/
 .npmrc
 .pypirc
 SERVER-INTEGRATION-HANDOFF.md
+
+.bootstrap-images/
