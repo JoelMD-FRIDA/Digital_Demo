@@ -12,7 +12,8 @@
     "test:integration": "python3 scripts/test-postgres.py",
     "predev": "node scripts/copy-pdf-worker.mjs",
     "prebuild": "node scripts/copy-pdf-worker.mjs",
-    "check:deployment": "node scripts/check-deployment.mjs"
+    "check:deployment": "node scripts/check-deployment.mjs",
+    "test:browser-session": "node scripts/test-session-browser.mjs"
   },
   "dependencies": {
     "lucide-react": "1.16.0",

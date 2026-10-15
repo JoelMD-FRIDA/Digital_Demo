@@ -111,3 +111,10 @@ These are explicitly marked private-acceptance-only and cannot satisfy the
 main-release provenance or automatic-deployment contract. The operator must
 verify the canonical GitHub artifact digest, run and image contents before any
 offline loading; production acceptance flags remain false.
+
+Session renewal keeps the 60-second entitlement revalidation without redirecting
+an open insurer wizard. The Digital first-party confidential IdP client needs
+`consent_mode: implicit`; its email/group identity scopes are fixed and client
+credentials/PKCE stay required. Insurer authorization and consent remain inside
+the simulator. The server update changes only the Digital app image and this
+one IdP client setting; it preserves the database/schema and live user accounts.

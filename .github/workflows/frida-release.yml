@@ -32,6 +32,8 @@ jobs:
           npm ci --prefix deployment --no-audit --no-fund
           npm test
           npm run test:integration
+          npx playwright install --with-deps chromium --only-shell
+          npm run test:browser-session
           npm run lint
           npm run typecheck
           npm run build

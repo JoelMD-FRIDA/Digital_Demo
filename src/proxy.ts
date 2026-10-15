@@ -1,7 +1,7 @@
 import { NextResponse,type NextRequest } from 'next/server';
 import { identity,HttpError } from '@/server/http';
 import { appOrigin } from '@/lib/auth/session';
-const PUBLIC=new Set(['/login','/api/auth/login','/auth/callback','/api/health/live','/api/health/ready','/api/internal/deployment-probe','/frida-icon.png','/frida-logo.svg','/favicon.ico','/pdf.worker.min.mjs']);
+const PUBLIC=new Set(['/auth/renew/complete','/login','/api/auth/login','/auth/callback','/api/health/live','/api/health/ready','/api/internal/deployment-probe','/frida-icon.png','/frida-logo.svg','/favicon.ico','/pdf.worker.min.mjs']);
 const RETIRED=new Set(['/register','/forgot-password','/reset-password']);
 export async function proxy(request:NextRequest) {
   const path=request.nextUrl.pathname;

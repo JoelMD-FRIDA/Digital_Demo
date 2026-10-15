@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { Client } from 'pg';
 import { NextRequest } from 'next/server';
 import { startLogin,finishLogin } from '@/lib/auth/oidc';
-import { SESSION_COOKIE,CSRF_COOKIE,sessionForCookie } from '@/lib/auth/session';
+import { SESSION_COOKIE,CSRF_COOKIE,sessionForCookie,decrypt,encrypt } from '@/lib/auth/session';
 import { database } from '@/lib/db/postgres';
 import { proxy } from '@/proxy';
 import { asUser,workspace,connect,reset } from '@/server/documents';
@@ -22,7 +22,7 @@ import { PATCH as patchDocument } from '@/app/api/documents/[uuid]/route';
 import { POST as postConnections } from '@/app/api/connections/route';
 import { POST as postReset } from '@/app/api/reset/route';
 const grants=new Map<string,Record<string,unknown>>();
-let server:Server,issuer:string,owner:Client,sessionA:{session:string;csrf:string;returnPath:string},sessionB:typeof sessionA;
+let server:Server,issuer:string,owner:Client,sessionA:{session:string;csrf:string;returnPath:string;renewalCookie?:string},sessionB:typeof sessionA;
 let profileA:string,profileB:string,bundle:Buffer;
 let fixtureDirectory:string;
 async function connectService(path:string) {
@@ -92,6 +92,33 @@ describe('native PostgreSQL, OIDC and protected document API',()=>{
   }
   await expect((await login('bad-signature','bad@example.test',{badSignature:true})).result).rejects.toThrow();
   expect((await owner.query('SELECT count(*)::int AS n FROM profiles')).rows[0].n).toBe(2);
+ });
+ it('renews an expired session silently for the same person without extending the one-hour binding',async()=>{
+  await owner.query("UPDATE app_sessions SET expires_at=now()-interval '1 second' WHERE id_hash=$1",[createHash('sha256').update(sessionA.session).digest('hex')]);
+  expect(await sessionForCookie(sessionA.session)).toBe(null);
+  expect(await sessionForCookie(sessionA.renewalCookie)).toBe(null);
+  const flow=await startLogin('/connections',{cookie:sessionA.renewalCookie});
+  expect(flow.url.searchParams.get('prompt')).toBe('none');
+  const code=randomUUID();grants.set(code,{subject:'person-a',email:'a@example.test',nonce:flow.url.searchParams.get('nonce'),challenge:flow.url.searchParams.get('code_challenge')});
+  const callback=new URL('https://documents.frida.test/auth/callback');callback.searchParams.set('code',code);callback.searchParams.set('state',flow.url.searchParams.get('state')!);
+  const renewed=await finishLogin(callback,flow.transaction);
+  expect(renewed.returnPath).toBe('/auth/renew/complete');expect(renewed.renewalCookie).toBeUndefined();
+  expect((await sessionForCookie(renewed.session))!.user.id).toBe(profileA);
+  sessionA={...renewed,renewalCookie:sessionA.renewalCookie};
+ });
+ it('silent renewal rejects another SSO identity, removed entitlement and expired/tampered bindings',async()=>{
+  for(const subject of ['person-b','removed-person']) {
+   const flow=await startLogin(null,{cookie:sessionA.renewalCookie});const code=randomUUID();
+   grants.set(code,{subject,email:subject==='person-b'?'b@example.test':'a@example.test',nonce:flow.url.searchParams.get('nonce'),challenge:flow.url.searchParams.get('code_challenge'),...(subject==='removed-person'?{claims:{groups:[]}}:{})});
+   const callback=new URL('https://documents.frida.test/auth/callback');callback.searchParams.set('code',code);callback.searchParams.set('state',flow.url.searchParams.get('state')!);
+   await expect(finishLogin(callback,flow.transaction)).rejects.toThrow();
+  }
+  const binding=JSON.parse(decrypt(sessionA.renewalCookie!));binding.expires=Date.now()-1;
+  await expect(startLogin(null,{cookie:encrypt(JSON.stringify(binding))})).rejects.toThrow();
+  await expect(startLogin(null,{cookie:'tampered'})).rejects.toThrow();
+  await expect(startLogin(null,{cookie:undefined})).rejects.toThrow();
+  const manual=await startLogin(null,{cookie:sessionA.renewalCookie,interactive:true});
+  expect(manual.url.searchParams.has('prompt')).toBe(false);
  });
  it('consumes callbacks once and refuses email-only identity linking',async()=>{
   const flow=await login('collision','a@example.test');await expect(flow.result).rejects.toThrow();

@@ -41,3 +41,33 @@ SQL under `supabase/` was preserved as reference and is never run by the adapter
 No live account, real document, existing database, paid API or source workstation
 secrets were used. Source contract acceptance flags remain false because local
 fixtures do not establish server acceptance, actual images or complete shared SSO.
+
+## Session continuity correction — 15 October 2026
+
+The live implementation exposed a 60-second app-session expiry as a full-page
+Authelia redirect on every API 401, including insurer consent submission. The
+corrected client renews with `prompt=none` in a hidden frame, retries a denied
+request once with fresh CSRF headers, and preserves the mounted consent dialog.
+A bounded failure leaves selections in place with an explicit same-account
+renewal action; it never navigates the main page automatically.
+
+The encrypted HttpOnly renewal binding expires after one hour and never grants
+API access. Renewed identity must match the original issuer, subject and profile;
+access checks remain bounded to 60 seconds, disabled profiles are rejected, and
+no OAuth tokens are stored. Background renewal never extends the one-hour
+binding. Removed entitlement, changed SSO identity, tampered/expired binding and
+callback replay are rejected. No database migration is needed.
+
+12 unit tests, 17 disposable PostgreSQL/TLS OIDC integration tests, typecheck
+and lint passed. A real Chromium fixture rendered the production Dashboard,
+consent modal, API client and renewal components. It verified expiry during
+consent, preserved checked consent after denial, rejected forged completion,
+explicit popup recovery, and one connect/one sync after silent renewal with fresh
+CSRF. Its API/IdP callback transport is synthetic; live Authelia/browser acceptance
+still requires the server update. An anonymous real Authelia `prompt=none`
+request returned `login_required` directly to the app callback without login UI.
+
+Digital's first-party confidential Authelia client must use implicit identity
+consent so background authentication does not require a new IdP consent screen.
+This does not change sandbox entitlement policy, PKCE, signed claims, or the
+insurer consent recorded by the application. Cyber's client stays unchanged.

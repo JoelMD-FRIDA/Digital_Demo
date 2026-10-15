@@ -6,6 +6,9 @@ export const SESSION_COOKIE = '__Host-frida-digital-documents';
 export const CSRF_COOKIE = '__Host-frida-digital-documents-csrf';
 export const TRANSACTION_COOKIE = '__Host-frida-digital-documents-oidc';
 export const SESSION_SECONDS = 60;
+// This cookie binds silent renewal to the original identity; it never authorizes an API.
+export const RENEWAL_COOKIE = '__Host-frida-digital-documents-renew';
+export const RENEWAL_SECONDS = 3600;
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 export const opaque = () => randomBytes(32).toString('base64url');
 export const cookieOptions = { secure: true, httpOnly: true, sameSite: 'lax' as const, path: '/' };
